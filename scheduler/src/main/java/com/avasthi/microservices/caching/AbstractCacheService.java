@@ -1,5 +1,6 @@
 package com.avasthi.microservices.caching;
 
+import com.avasthi.microservices.annotations.DefineCache;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Value;

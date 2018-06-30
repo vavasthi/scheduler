@@ -1,4 +1,4 @@
-package com.avasthi.microservices.caching;
+package com.avasthi.microservices.annotations;
 
 
 import java.lang.annotation.ElementType;

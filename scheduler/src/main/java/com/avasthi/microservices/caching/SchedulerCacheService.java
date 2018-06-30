@@ -1,7 +1,7 @@
 package com.avasthi.microservices.caching;
 
+import com.avasthi.microservices.annotations.DefineCache;
 import com.avasthi.microservices.pojos.ScheduledItem;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.text.SimpleDateFormat;
@@ -14,9 +14,6 @@ import java.util.Date;
 @Service
 public class SchedulerCacheService extends AbstractGeneralCacheService {
 
-  @Value("${scheduler.active:900}")
-  private Integer activeTasksDuration;
-
   public ScheduledItem scheduleItem(ScheduledItem item) {
 
     String key = getBucketKey(item.getTimestamp());
@@ -27,10 +24,9 @@ public class SchedulerCacheService extends AbstractGeneralCacheService {
 
     Calendar calendar = Calendar.getInstance();
     calendar.setTime(timestamp);
-    int minutes = calendar.get(Calendar.MINUTE);
-    int slot = minutes / activeTasksDuration;
+    calendar.set(Calendar.SECOND, 0);
+    calendar.set(Calendar.MILLISECOND, 0);
     SimpleDateFormat format = new SimpleDateFormat(SchedulerConstants.DATE_KEY_FORMAT);
-    calendar.set(Calendar.MINUTE, slot * activeTasksDuration);
     return format.format(calendar.getTime());
   }
 }

@@ -104,4 +104,7 @@ public class SchedulerConstants {
     public static final String SCHEDULER_CACHE_NAME = "SCHEDULER_CACHE";
     public static final String SCHEDULER_CACHE_PEFIX = "SCHEDULER:";
     public static final String DATE_KEY_FORMAT="yyyyMMddhhmm";
+
+    public static final String MSG_SUCCESS = "Success!";
+
 }
