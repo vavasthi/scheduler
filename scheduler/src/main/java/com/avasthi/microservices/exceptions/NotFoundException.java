@@ -14,37 +14,16 @@
  * limitations under the License.
  */
 
-package com.avasthi.microservices.pojos;
+package com.avasthi.microservices.exceptions;
+import com.avasthi.microservices.annotations.ServiceResponse;
 
-import java.io.Serializable;
-import java.util.List;
+/**
+ * Created by vinay on 3/30/16.
+ */
+@ServiceResponse(defaultCode = SchedulerResponseCode.GENERAL_NOT_FOUND)
+public class NotFoundException extends SchedulerBaseException {
 
-public class MessageTarget extends Target {
-
-  public MessageTarget() {
-
+  public NotFoundException(String message) {
+    super(message);
   }
-  public MessageTarget(String topic, List<String> servers) {
-    this.topic = topic;
-    this.servers = servers;
-  }
-
-  public String getTopic() {
-    return topic;
-  }
-
-  public void setTopic(String topic) {
-    this.topic = topic;
-  }
-
-  public List<String> getServers() {
-    return servers;
-  }
-
-  public void setServers(List<String> servers) {
-    this.servers = servers;
-  }
-
-  private String topic;
-  private List<String> servers;
 }

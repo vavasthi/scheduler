@@ -1,10 +1,28 @@
+/*
+ * Copyright (c) 2018 Vinay Avasthi
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.avasthi.microservices.caching;
 
 import com.avasthi.microservices.annotations.DefineCache;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataAccessException;
+import org.springframework.data.redis.core.RedisOperations;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.SessionCallback;
 import org.springframework.data.redis.serializer.SerializationException;
 import org.springframework.stereotype.Service;
 
@@ -15,9 +33,6 @@ import java.util.concurrent.TimeUnit;
 public class AbstractCacheService {
 
     private static final Logger logger = LogManager.getLogger(AbstractCacheService.class);
-
-    @Value("${spring.profiles.active}")
-    private String springProfilesActive;
 
     protected long getExpiry() {
 
@@ -289,6 +304,28 @@ public class AbstractCacheService {
         }
     }
 
+    protected <K, V> V addObjectToSet(RedisTemplate<Object, Object> redisTemplate,
+                                      final K cacheKey,
+                                      UUID valueId,
+                                      final V cacheValue) {
+        if (cacheKey == null) {
+            return null;
+        }
+        CacheKeyPrefix cacheKeyPrefix = new CacheKeyPrefix(getPrefix(), cacheKey);
+        CacheKeyPrefix valueIdPrefix = new CacheKeyPrefix(getPrefix(), valueId);
+        redisTemplate.execute(new SessionCallback() {
+            @Override
+            public Object execute(RedisOperations redisOperations) throws DataAccessException {
+                redisOperations.multi();
+                redisOperations.opsForValue().set(valueIdPrefix, cacheValue);
+                redisOperations.opsForSet().add(cacheKeyPrefix, valueId);
+                redisOperations.exec();
+                return cacheValue;
+            }
+
+        });
+        return cacheValue;
+    }
     protected <K, V> V addToList(RedisTemplate<Object, Object> redisTemplate,
                                  final K cacheKey,
                                  final V cacheValue) {
@@ -296,8 +333,51 @@ public class AbstractCacheService {
             return null;
         }
         CacheKeyPrefix cacheKeyPrefix = new CacheKeyPrefix(getPrefix(), cacheKey);
-        redisTemplate.opsForList().rightPush(cacheKey, cacheValue);
+        redisTemplate.opsForSet().add(cacheKeyPrefix, cacheValue);
         return cacheValue;
+    }
+    protected <K, V> V getObjectFromSet(RedisTemplate<Object, Object> redisTemplate,
+                                        final K cacheKey) {
+        if (cacheKey == null) {
+            return null;
+        }
+        CacheKeyPrefix cacheKeyPrefix = new CacheKeyPrefix(getPrefix(), cacheKey);
+        Object value = redisTemplate.opsForSet().pop(cacheKeyPrefix);
+        if (value != null) {
+            return (V) redisTemplate.opsForValue().get(new CacheKeyPrefix(getPrefix(), value));
+        }
+        return null;
+    }
+    protected <K, V> V removeObjectFromSet(RedisTemplate<Object, Object> redisTemplate,
+                                           final K cacheKey,
+                                           final UUID valueKey) {
+        if (cacheKey == null) {
+            return null;
+        }
+        CacheKeyPrefix cacheKeyPrefix = new CacheKeyPrefix(getPrefix(), cacheKey);
+        Object value = redisTemplate.opsForSet().remove(cacheKeyPrefix, valueKey);
+        Object o =  redisTemplate.opsForValue().get(new CacheKeyPrefix(getPrefix(), value));
+        redisTemplate.delete(new CacheKeyPrefix(getPrefix(), valueKey));
+        return (V) o;
+    }
+    protected <K, V> V getFromList(RedisTemplate<Object, Object> redisTemplate,
+                                   final K cacheKey) {
+        if (cacheKey == null) {
+            return null;
+        }
+        CacheKeyPrefix cacheKeyPrefix = new CacheKeyPrefix(getPrefix(), cacheKey);
+        Object value = redisTemplate.opsForSet().pop(cacheKeyPrefix);
+        return (V) value;
+    }
+    protected <K, V> V remove(RedisTemplate<Object, Object> redisTemplate,
+                              final K cacheKey,
+                              final V value) {
+        if (cacheKey == null) {
+            return null;
+        }
+        CacheKeyPrefix cacheKeyPrefix = new CacheKeyPrefix(getPrefix(), cacheKey);
+        redisTemplate.opsForSet().remove(cacheKeyPrefix, value);
+        return (V) value;
     }
     /*
      * Not supported in REDIS2.8

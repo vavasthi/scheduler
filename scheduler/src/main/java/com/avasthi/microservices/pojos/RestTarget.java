@@ -1,15 +1,39 @@
+/*
+ * Copyright (c) 2018 Vinay Avasthi
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.avasthi.microservices.pojos;
 
 import java.io.Serializable;
 import java.util.Map;
 
-public class RestTarget implements Serializable {
+public class RestTarget extends Target {
 
+  public enum METHOD {
+    GET,
+    POST,
+    DELETE
+  }
   public RestTarget() {
   }
 
-  public RestTarget(String url, Map<String, String> headers) {
+  public RestTarget(String url, METHOD method, String body, String contentType, Map<String, String> headers) {
     this.url = url;
+    this.method = method;
+    this.body = body;
+    this.contentType = contentType;
     this.headers = headers;
   }
 
@@ -21,6 +45,30 @@ public class RestTarget implements Serializable {
     this.url = url;
   }
 
+  public METHOD getMethod() {
+    return method;
+  }
+
+  public void setMethod(METHOD method) {
+    this.method = method;
+  }
+
+  public String getBody() {
+    return body;
+  }
+
+  public void setBody(String body) {
+    this.body = body;
+  }
+
+  public String getContentType() {
+    return contentType;
+  }
+
+  public void setContentType(String contentType) {
+    this.contentType = contentType;
+  }
+
   public Map<String, String> getHeaders() {
     return headers;
   }
@@ -30,5 +78,8 @@ public class RestTarget implements Serializable {
   }
 
   private String url;
+  private METHOD method;
+  private String body;
+  private String contentType;
   private Map<String, String> headers;
 }

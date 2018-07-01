@@ -11,8 +11,6 @@ public class SchedulerBaseException extends RuntimeException {
 
   public static final String LOG_FORMAT = "Error Code: %s; Data: %s; Message: %s";
 
-  private int errorCode;
-  private HttpStatus httpStatus;
   private boolean shouldLog = true;
 
 
@@ -20,52 +18,10 @@ public class SchedulerBaseException extends RuntimeException {
     super("");
   }
 
-  public SchedulerBaseException(int errorCode, HttpStatus httpStatus, String message) {
-    super(message);
-    this.errorCode=errorCode;
-    this.httpStatus = httpStatus;
-  }
-
   public SchedulerBaseException(String message) {
     super(message);
   }
 
-  public SchedulerBaseException(Throwable cause) {
-    super(cause);
-  }
-
-  public SchedulerBaseException(String message, Throwable cause) {
-    super(message, cause);
-  }
-
-  public SchedulerBaseException(String message, Throwable cause,
-                               boolean enableSuppression, boolean writableStackTrace) {
-    super(message, cause, enableSuppression, writableStackTrace);
-  }
-
-  public SchedulerBaseException(String errorCode, Object data, String details) {
-    super(String.format(LOG_FORMAT, errorCode, data, details));
-  }
-
-  public SchedulerBaseException(String errorCode, Object data, String details, Throwable throwable) {
-    super(String.format(LOG_FORMAT, errorCode, data, details), throwable);
-  }
-
-  public HttpStatus getHttpStatus() {
-    return httpStatus;
-  }
-
-  public void setHttpStatus(HttpStatus httpStatus) {
-    this.httpStatus = httpStatus;
-  }
-
-  public int getErrorCode() {
-    return errorCode;
-  }
-
-  public void setErrorCode(int errorCode) {
-    this.errorCode = errorCode;
-  }
 
   public boolean shouldLog() {
     return shouldLog;
@@ -73,5 +29,12 @@ public class SchedulerBaseException extends RuntimeException {
 
   public void shouldLog(boolean shouldLog) {
     this.shouldLog = shouldLog;
+  }
+
+  public HttpStatus getHttpStatus() {
+    return this.getClass().getAnnotation(ServiceResponse.class).defaultCode().getDefaultHttpStatus();
+  }
+  public int getErrorCode() {
+    return this.getClass().getAnnotation(ServiceResponse.class).defaultCode().id;
   }
 }

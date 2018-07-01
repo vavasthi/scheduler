@@ -103,8 +103,16 @@ public class SchedulerConstants {
     public static final long NEVER_EXPIRE = -1;
     public static final String SCHEDULER_CACHE_NAME = "SCHEDULER_CACHE";
     public static final String SCHEDULER_CACHE_PEFIX = "SCHEDULER:";
+    public static final String SCHEDULER_ITEM_BEING_PROCESSED_CACHE_NAME = "SCHEDULER_IBP_CACHE";
+    public static final String SCHEDULER_ITEM_BEING_PROCESSED_CACHE_PEFIX = "SCHEDULER_IBP:";
+    public static final String SCHEDULER_ITEM_BEING_PROCESSED_KEY = "SCHEDULER_ITEM_BEING_PROCESSED_KEY:";
+    public static final String SCHEDULER_ITEM_BEING_RECOVERED_KEY = "SCHEDULER_ITEM_BEING_RECOVERED_KEY:";
     public static final String DATE_KEY_FORMAT="yyyyMMddhhmm";
 
     public static final String MSG_SUCCESS = "Success!";
+
+    public static final String VERSION_1 = "/v1";
+    public static final String SCHEDULER_ENDPOINT_NAME = "scheduler";
+    public static final String SCHEDULER_ENDPOINT = "/" + SCHEDULER_ENDPOINT_NAME;
 
 }

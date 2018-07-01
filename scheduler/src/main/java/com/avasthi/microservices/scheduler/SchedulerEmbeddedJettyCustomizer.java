@@ -2,7 +2,7 @@
 package com.avasthi.microservices.scheduler;
 
 
-import com.avasthi.microservices.exceptions.LogEnableException;
+import com.avasthi.microservices.exceptions.LoggingException;
 import org.eclipse.jetty.server.*;
 import org.eclipse.jetty.server.handler.HandlerCollection;
 import org.eclipse.jetty.server.handler.RequestLogHandler;
@@ -54,7 +54,7 @@ public class SchedulerEmbeddedJettyCustomizer {
         File logFile = new File(loggingPath + "/scheduler-yyyy_mm_dd.access.log");
         String logFilename = logFile.getAbsolutePath();
         if (!logFile.getParentFile().exists() && !logFile.getParentFile().mkdirs()) {
-          throw new LogEnableException(String.format("%s could not be created.", logFile.getParentFile().getAbsolutePath()));
+          throw new LoggingException(String.format("%s could not be created.", logFile.getParentFile().getAbsolutePath()));
         }
         NCSARequestLog requestLog = new NCSARequestLog(logFilename);
         requestLog.setAppend(true);

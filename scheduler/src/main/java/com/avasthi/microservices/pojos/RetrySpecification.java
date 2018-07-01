@@ -17,34 +17,32 @@
 package com.avasthi.microservices.pojos;
 
 import java.io.Serializable;
-import java.util.List;
 
-public class MessageTarget extends Target {
-
-  public MessageTarget() {
-
-  }
-  public MessageTarget(String topic, List<String> servers) {
-    this.topic = topic;
-    this.servers = servers;
+public class RetrySpecification implements Serializable {
+  public RetrySpecification() {
   }
 
-  public String getTopic() {
-    return topic;
+  public RetrySpecification(int count, int timeout) {
+    this.count = count;
+    this.timeout = timeout;
   }
 
-  public void setTopic(String topic) {
-    this.topic = topic;
+  public int getCount() {
+    return count;
   }
 
-  public List<String> getServers() {
-    return servers;
+  public void setCount(int count) {
+    this.count = count;
   }
 
-  public void setServers(List<String> servers) {
-    this.servers = servers;
+  public int getTimeout() {
+    return timeout;
   }
 
-  private String topic;
-  private List<String> servers;
+  public void setTimeout(int timeout) {
+    this.timeout = timeout;
+  }
+
+  private int count;
+  private int timeout;
 }

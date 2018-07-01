@@ -1,20 +1,36 @@
+/*
+ * Copyright (c) 2018 Vinay Avasthi
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.avasthi.microservices.caching;
 
 
-
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 @Service
 public class AbstractGeneralCacheService extends AbstractCacheService {
 
   @Autowired
   private SchedulerRedisConfiguration redisConfiguration;
+
   protected void storeObject(final Map<Object, Object> keyValuePairs) {
 
     storeObject(redisConfiguration.redisTemplate(), keyValuePairs);
@@ -58,9 +74,30 @@ public class AbstractGeneralCacheService extends AbstractCacheService {
 
     return setIfAbsent(redisConfiguration.redisTemplate(), key, value);
   }
+  protected <K, V> V addObjectToSet(final K cacheKey,
+                                    final UUID valueId,
+                                    final V cacheValue) {
+    return addObjectToSet(redisConfiguration.redisTemplate(), cacheKey, valueId, cacheValue);
+  }
+  protected <K, V> V removeObjectFromSet(final K cacheKey,
+                                         final UUID valueId) {
+    return removeObjectFromSet(redisConfiguration.redisTemplate(), cacheKey, valueId);
+  }
   protected <K, V> V addToList(final K cacheKey,
                                final V cacheValue) {
     return addToList(redisConfiguration.redisTemplate(), cacheKey, cacheValue);
+  }
+  protected <K, V> V getObjectFromSet(final K cacheKey) {
+
+    return getObjectFromSet(redisConfiguration.redisTemplate(), cacheKey);
+  }
+  protected <K, V> V getFromList(final K cacheKey) {
+
+    return getFromList(redisConfiguration.redisTemplate(), cacheKey);
+  }
+  protected <K, V> V remove(final K cacheKey, final V value) {
+
+    return remove(redisConfiguration.redisTemplate(), cacheKey, value);
   }
 
   protected Set<Object> keys(String pattern){
