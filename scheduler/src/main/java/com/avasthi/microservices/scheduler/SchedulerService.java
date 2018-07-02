@@ -16,10 +16,14 @@
 
 package com.avasthi.microservices.scheduler;
 
+import com.avasthi.microservices.caching.SchedulerCacheService;
 import com.avasthi.microservices.caching.SchedulerConstants;
-import com.avasthi.microservices.caching.SchedulerItemBeingProcessedCacheService;
-import com.avasthi.microservices.pojos.*;
+import com.avasthi.microservices.pojos.MessageTarget;
+import com.avasthi.microservices.pojos.RestTarget;
+import com.avasthi.microservices.pojos.RetrySpecification;
+import com.avasthi.microservices.pojos.ScheduledItem;
 import com.avasthi.microservices.utils.SchedulerKafkaProducer;
+import com.avasthi.microservices.utils.SchedulerThreadFactory;
 import okhttp3.*;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.producer.Producer;
@@ -29,23 +33,36 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import com.avasthi.microservices.caching.SchedulerCacheService;
 
-import java.io.IOException;
 import java.util.Date;
 import java.util.Map;
-import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
 
 @Service
 public class SchedulerService {
 
   @Autowired
   private SchedulerCacheService schedulerCacheService;
-  @Autowired
-  private SchedulerItemBeingProcessedCacheService itemBeingProcessedCacheService;
+
+  private static final ExecutorService executorService;
 
   private static Logger logger = LoggerFactory.getLogger(SchedulerService.class.getName());
 
+  static {
+    ThreadFactory factory = new SchedulerThreadFactory()
+            .setDaemon(false)
+            .setNamePrefix("scheduler-service-pool")
+            .setPriority(Thread.MAX_PRIORITY)
+            .build();
+    executorService = new ThreadPoolExecutor(SchedulerConstants.MIN_THREADS,
+            SchedulerConstants.MAX_THREADS,
+            SchedulerConstants.THREAD_KEEPALIVE_TIME,
+            SchedulerConstants.THREAD_KEEPALIVE_TIMEUNIT,
+            new LinkedBlockingQueue<>(SchedulerConstants.MAX_QUEUE_SIZE));
+  }
   @Scheduled(cron = "0 * * * * ?")
   public void processPerMinute() {
     Date timestamp = new Date();
@@ -55,34 +72,18 @@ public class SchedulerService {
       /**
        * Add the item into the being processed set. This is to take care of crash scenarios.
        */
-      itemBeingProcessedCacheService.scheduleItem(scheduledItem.getId());
       logger.info("Scheduling item " + scheduledItem.getId().toString());
-      processItem(scheduledItem); // Process the item based on the configuration provided.
+      final ScheduledItem si = scheduledItem;
+      executorService.submit(new Runnable() {
+        @Override
+        public void run() {
+
+          processItem(si); // Process the item based on the configuration provided.
+        }
+      });
     }
   }
 
-  /**
-   * This method is called on the start of the process. It is to take care of the items being processed
-   * and a recovery after crash. It will move all the items from beingRecovered set to beingProcessedSet
-   * and then will callback for all the items which are older than 5 seconds.
-   */
-  public void processPending() {
-    itemBeingProcessedCacheService.recover();
-    UUID id = null;
-    ScheduledItem scheduledItem = null;
-    while ((id = itemBeingProcessedCacheService.processNext()) != null) {
-
-      Date now = new Date();
-      scheduledItem = schedulerCacheService.getItem(id);
-      if ((now.getTime() - scheduledItem.getTimestamp().getTime()) / (1000 * 60) > SchedulerConstants.FIVE_MINUTES) {
-        /**
-         * This item is five minutes old in the beingProcessedSet. It is very likely that it was an orphan because
-         * of crash of an instance.
-         */
-        processItem(scheduledItem);
-      }
-    }
-  }
   private void processItem(ScheduledItem scheduledItem) {
     logger.info("Processing " + scheduledItem.getId().toString() + " @ " + scheduledItem.getTimestamp().toString());
 
@@ -136,7 +137,6 @@ public class SchedulerService {
        * the item is deleted. This is required for that deletion.
        */
       schedulerCacheService.remove(scheduledItem.getId());
-      itemBeingProcessedCacheService.remove(scheduledItem.getId());
     }
   }
 
@@ -169,6 +169,6 @@ public class SchedulerService {
     Producer<String, String> producer
             = SchedulerKafkaProducer.INSTANCE.getProducer(StringUtils.join(messageTarget.getServers(), ','), retryCount);
     producer.send(new ProducerRecord<>(messageTarget.getTopic(), 1, body, body));
-    return false;
+    return true;
   }
 }

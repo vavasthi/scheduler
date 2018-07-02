@@ -19,7 +19,6 @@ package com.avasthi.microservices.endpoints;
 
 import com.avasthi.microservices.caching.SchedulerCacheService;
 import com.avasthi.microservices.caching.SchedulerConstants;
-import com.avasthi.microservices.caching.SchedulerItemBeingProcessedCacheService;
 import com.avasthi.microservices.exceptions.NotFoundException;
 import com.avasthi.microservices.pojos.ScheduledItem;
 import io.swagger.annotations.Api;
@@ -39,8 +38,6 @@ public class SchedulerEndpoint {
 
   @Autowired
   private SchedulerCacheService schedulerCacheService;
-  @Autowired
-  private SchedulerItemBeingProcessedCacheService schedulerItemBeingProcessedCacheService;
 
 
   @ApiOperation(value = "Create a new scheduled item.",
@@ -64,10 +61,6 @@ public class SchedulerEndpoint {
   public @ResponseBody ScheduledItem delete(@PathVariable(value = "id") UUID id) {
 
     ScheduledItem scheduledItem = schedulerCacheService.remove(id);
-    if (scheduledItem != null) {
-
-      schedulerItemBeingProcessedCacheService.remove(scheduledItem.getId());
-    }
     if (scheduledItem == null) {
       throw new NotFoundException(String.format("%s not found", id.toString()));
     }

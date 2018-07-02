@@ -1,6 +1,5 @@
 package com.avasthi.microservices.scheduler;
 
-import com.avasthi.microservices.caching.SchedulerItemBeingProcessedCacheService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -28,6 +27,6 @@ public class SchedulerLauncher {
 	@PostConstruct
 	public void initialize() {
 
-		schedulerService.processPending();
+		//schedulerService.processPending();
 	}
 }
