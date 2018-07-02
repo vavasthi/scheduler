@@ -19,7 +19,11 @@ package com.avasthi.microservices.scheduler;
 import com.avasthi.microservices.caching.SchedulerConstants;
 import com.avasthi.microservices.caching.SchedulerItemBeingProcessedCacheService;
 import com.avasthi.microservices.pojos.*;
+import com.avasthi.microservices.utils.SchedulerKafkaProducer;
 import okhttp3.*;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.kafka.clients.producer.Producer;
+import org.apache.kafka.clients.producer.ProducerRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -89,7 +93,11 @@ public class SchedulerService {
     boolean retryItem = false;
     if (messageTarget != null && !messageTarget.done()) {
 
-      if (!processMessageTarget(messageTarget)) {
+      int retryCount = 1;
+      if (retry != null) {
+        retryCount = retry.getCount();
+      }
+      if (!processMessageTarget(messageTarget, scheduledItem.getBody(), retryCount)) {
         if (retry != null && retry.getCount() > messageTarget.getCount()) {
           scheduledItem.getMessageTarget().markRetrying();
           retryItem = true;
@@ -103,7 +111,7 @@ public class SchedulerService {
       }
     }
     if (restTarget != null && !restTarget.done()) {
-      if (!processRestTarget(restTarget)) {
+      if (!processRestTarget(restTarget, scheduledItem.getBody())) {
 
         if (retry != null && retry.getCount() > restTarget.getCount()) {
           scheduledItem.getRestTarget().markRetrying();
@@ -132,7 +140,7 @@ public class SchedulerService {
     }
   }
 
-  private boolean processRestTarget(RestTarget restTarget) {
+  private boolean processRestTarget(RestTarget restTarget, String body) {
 
     try {
       OkHttpClient client = new OkHttpClient();
@@ -141,13 +149,13 @@ public class SchedulerService {
         requestBuilder.addHeader(e.getKey(), e.getValue());
       }
       if (restTarget.getMethod() == RestTarget.METHOD.POST) {
-        requestBuilder.post(RequestBody.create(MediaType.parse(restTarget.getContentType()), restTarget.getBody()));
+        requestBuilder.post(RequestBody.create(MediaType.parse(restTarget.getContentType()), body));
       }
       else if(restTarget.getMethod() == RestTarget.METHOD.GET) {
         requestBuilder.get();
       }
       else if(restTarget.getMethod() == RestTarget.METHOD.DELETE) {
-        requestBuilder.delete(RequestBody.create(MediaType.parse(restTarget.getContentType()), restTarget.getBody()));
+        requestBuilder.delete(RequestBody.create(MediaType.parse(restTarget.getContentType()), body));
       }
       Response response = client.newCall(requestBuilder.build()).execute();
       return response.isSuccessful();
@@ -156,8 +164,11 @@ public class SchedulerService {
     }
     return false;
   }
-  private boolean processMessageTarget(MessageTarget messageTarget) {
+  private boolean processMessageTarget(MessageTarget messageTarget, String body, int retryCount) {
 
+    Producer<String, String> producer
+            = SchedulerKafkaProducer.INSTANCE.getProducer(StringUtils.join(messageTarget.getServers(), ','), retryCount);
+    producer.send(new ProducerRecord<>(messageTarget.getTopic(), 1, body, body));
     return false;
   }
 }

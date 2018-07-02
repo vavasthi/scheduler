@@ -29,10 +29,9 @@ public class RestTarget extends Target {
   public RestTarget() {
   }
 
-  public RestTarget(String url, METHOD method, String body, String contentType, Map<String, String> headers) {
+  public RestTarget(String url, METHOD method, String contentType, Map<String, String> headers) {
     this.url = url;
     this.method = method;
-    this.body = body;
     this.contentType = contentType;
     this.headers = headers;
   }
@@ -53,14 +52,6 @@ public class RestTarget extends Target {
     this.method = method;
   }
 
-  public String getBody() {
-    return body;
-  }
-
-  public void setBody(String body) {
-    this.body = body;
-  }
-
   public String getContentType() {
     return contentType;
   }
@@ -79,7 +70,6 @@ public class RestTarget extends Target {
 
   private String url;
   private METHOD method;
-  private String body;
   private String contentType;
   private Map<String, String> headers;
 }

@@ -113,6 +113,13 @@ public class ScheduledItem implements Serializable {
   public void setTriedAt(Date triedAt) {
     this.triedAt = triedAt;
   }
+  public String getBody() {
+    return body;
+  }
+
+  public void setBody(String body) {
+    this.body = body;
+  }
 
   public void tryingExecution() {
     ++count;
@@ -127,5 +134,7 @@ public class ScheduledItem implements Serializable {
   private RestTarget restTarget;
   private RetrySpecification retry;
   private Date triedAt;
+  private String body;
+
 
 }
