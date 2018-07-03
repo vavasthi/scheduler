@@ -8,9 +8,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.text.SimpleDateFormat;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.UUID;
+import java.util.*;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 @DefineCache(name = SchedulerConstants.SCHEDULER_CACHE_NAME,
         prefix = SchedulerConstants.SCHEDULER_CACHE_PEFIX,
@@ -90,6 +90,41 @@ public class SchedulerCacheService extends AbstractGeneralCacheService {
       t += (timeout * 1000);
       scheduledItem.setTimestamp(new Date(t));
       store(scheduledItem);
+    }
+  }
+
+  /**
+   * This method will return ScheduledItems with UUID in BEING_PROCESSED set which are older than 5 minutes beyond
+   * scheduled time. These items are lying here because of some instance crash and we reschedule them to nearlest slot.
+   * @return
+   */
+  public Set<ScheduledItem> getStaleScheduledItems() {
+
+    Set<UUID> staleUUIDs = getRandomStalePendingObjects(SchedulerConstants.STALE_UUID_BLOCK_SIZE);
+    Set<ScheduledItem> scheduledItems = new HashSet<>();
+    final Date now = new Date();
+    staleUUIDs.stream().filter(new Predicate<UUID>() {
+      @Override
+      public boolean test(UUID uuid) {
+        ScheduledItem si = get(uuid, ScheduledItem.class);
+        if (si != null && (now.getTime() - si.getTimestamp().getTime()) > 60 * 1000) {
+          scheduledItems.add(si);
+          return true;
+        }
+        return false;
+      }
+    });
+    return scheduledItems;
+  }
+  public void reschedulePendingItems(Set<ScheduledItem> scheduledItems) {
+    Date now = new Date();
+    Calendar calendar = Calendar.getInstance();
+    calendar.setTime(now);
+    calendar.add(Calendar.MINUTE, 2);
+    Date nowPlus2 = calendar.getTime();
+    String key = getBucketKey(now);
+    for (ScheduledItem si : scheduledItems) {
+      rescheduleFromBeingProcessed(key, si.getId());
     }
   }
 }

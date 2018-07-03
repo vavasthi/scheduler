@@ -175,8 +175,15 @@ public class SchedulerService {
         requestBuilder.delete(RequestBody.create(MediaType.parse(restTarget.getContentType()), body));
       }
       Response response = client.newCall(requestBuilder.build()).execute();
-      return response.isSuccessful();
+      if (response.isSuccessful()) {
+        return true;
+      }
+      else {
+        logger.info(response.body().string());
+        return false;
+      }
     } catch (Exception e) {
+      logger.info("Exception in REST call." + e.getMessage() + " " + e.getLocalizedMessage(), e);
       // e.printStackTrace();
     }
     return false;
@@ -184,10 +191,12 @@ public class SchedulerService {
   private boolean processMessageTarget(MessageTarget messageTarget, String body, int retryCount) {
 
     Producer<String, String> producer
-            = SchedulerKafkaProducer.INSTANCE.getProducer(StringUtils.join(messageTarget.getServers(), ','), retryCount);
+            = SchedulerKafkaProducer.INSTANCE.getProducer(StringUtils.join(messageTarget.getServers(), ','),
+            retryCount,
+            messageTarget.getProperties());
     try {
 
-      producer.send(new ProducerRecord<>(messageTarget.getTopic(), 1, body, body));
+      producer.send(new ProducerRecord<>(messageTarget.getTopic(), messageTarget.getPartition(), body, body));
     }
     finally {
       producer.flush();

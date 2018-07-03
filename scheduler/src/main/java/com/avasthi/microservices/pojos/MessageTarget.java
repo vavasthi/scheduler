@@ -17,16 +17,20 @@
 package com.avasthi.microservices.pojos;
 
 import java.io.Serializable;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class MessageTarget extends Target {
 
   public MessageTarget() {
 
   }
-  public MessageTarget(String topic, List<String> servers) {
+  public MessageTarget(String topic, int partition, List<String> servers, Map<String, String> properties) {
     this.topic = topic;
+    this.partition = partition;
     this.servers = servers;
+    this.properties = properties;
   }
 
   public String getTopic() {
@@ -45,6 +49,24 @@ public class MessageTarget extends Target {
     this.servers = servers;
   }
 
+  public int getPartition() {
+    return partition;
+  }
+
+  public void setPartition(int partition) {
+    this.partition = partition;
+  }
+
+  public Map<String, String> getProperties() {
+    return properties;
+  }
+
+  public void setProperties(Map<String, String> properties) {
+    this.properties = properties;
+  }
+
   private String topic;
+  private int partition;
   private List<String> servers;
+  private Map<String, String> properties = new HashMap<>();
 }

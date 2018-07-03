@@ -107,6 +107,7 @@ public class SchedulerConstants {
    * The constant TEN_SEC.
    */
   public static final long TEN_SEC = 10;
+  public static final int STALE_UUID_BLOCK_SIZE = 50;
   /**
    * The constant USER_UPLOAD_TOKEN_MIN_EXPIRE_TIME_SECONDS.
    */

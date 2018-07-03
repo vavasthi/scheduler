@@ -18,6 +18,7 @@ package com.avasthi.microservices.caching;
 
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -91,6 +92,11 @@ public class AbstractGeneralCacheService extends AbstractCacheService {
 
     return getObjectFromSet(redisConfiguration.redisTemplate(), cacheKey);
   }
+  protected <K, V> Set<UUID> getRandomStalePendingObjects(int count) {
+
+    return getRandomStalePendingObjects(redisConfiguration.redisTemplate(), count);
+  }
+
   protected <K, V> V getFromList(final K cacheKey) {
 
     return getFromList(redisConfiguration.redisTemplate(), cacheKey);
@@ -100,6 +106,13 @@ public class AbstractGeneralCacheService extends AbstractCacheService {
     return remove(redisConfiguration.redisTemplate(), cacheKey, value);
   }
 
+  protected UUID removeFromBeingProcessed(final UUID value) {
+    return removeFromBeingProcessed(redisConfiguration.redisTemplate(), value);
+  }
+  protected void rescheduleFromBeingProcessed(final String cacheKey,
+                                              final UUID valueKey) {
+    rescheduleFromBeingProcessed(redisConfiguration.redisTemplate(), cacheKey, valueKey);
+  }
   protected Set<Object> keys(String pattern){
     return keys(redisConfiguration.redisTemplate(), pattern);
   }

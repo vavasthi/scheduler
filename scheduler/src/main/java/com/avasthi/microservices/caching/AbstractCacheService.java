@@ -17,6 +17,7 @@
 package com.avasthi.microservices.caching;
 
 import com.avasthi.microservices.annotations.DefineCache;
+import com.avasthi.microservices.pojos.ScheduledItem;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.dao.DataAccessException;
@@ -356,6 +357,21 @@ public class AbstractCacheService {
     }
     return (V)redisTemplate.opsForValue().get(new CacheKeyPrefix(getPrefix(), value));
   }
+  protected <K, V> Set<UUID> getRandomStalePendingObjects(RedisTemplate<Object, Object> redisTemplate,
+                                                  int count) {
+    CacheKeyPrefix cacheKeyPrefix = new CacheKeyPrefix(getPrefix(),
+            SchedulerConstants.SCHEDULER_ITEM_BEING_PROCESSED_KEY);
+    Set<UUID> staleUUIDs = new HashSet<>();
+    for (int i = 0; i < count; ++i) {
+
+      final Object value = redisTemplate.opsForSet().randomMember(cacheKeyPrefix);
+      if (value == null) {
+        return staleUUIDs;
+      }
+      staleUUIDs.add((UUID)value);
+    }
+    return staleUUIDs;
+  }
   protected <K, V> V removeObjectFromSet(RedisTemplate<Object, Object> redisTemplate,
                                          final K cacheKey,
                                          final UUID valueKey) {
@@ -398,6 +414,31 @@ public class AbstractCacheService {
     redisTemplate.opsForSet().remove(cacheKeyPrefix, value);
     return (V) value;
   }
+  protected <K, V> UUID removeFromBeingProcessed(RedisTemplate<Object, Object> redisTemplate,
+                                              final UUID value) {
+    CacheKeyPrefix cacheKeyPrefix = new CacheKeyPrefix(getPrefix(), SchedulerConstants.SCHEDULER_ITEM_BEING_PROCESSED_KEY);
+    redisTemplate.opsForSet().remove(cacheKeyPrefix, value);
+    return value;
+  }
+  protected <K, V> void rescheduleFromBeingProcessed(RedisTemplate<Object, Object> redisTemplate,
+                                                  final K cacheKey,
+                                                  final UUID valueKey) {
+    if (cacheKey == null) {
+      return;
+    }
+    CacheKeyPrefix cacheKeyPrefix = new CacheKeyPrefix(getPrefix(), cacheKey);
+    List<Object> results = redisTemplate.executePipelined(new SessionCallback<List<Object>>() {
+
+      @Override
+      public List<Object> execute(RedisOperations redisOperations) throws DataAccessException {
+        redisOperations.opsForSet().remove(new CacheKeyPrefix(getPrefix(), SchedulerConstants.SCHEDULER_ITEM_BEING_PROCESSED_KEY),
+                valueKey);
+        redisOperations.opsForSet().add(cacheKeyPrefix, valueKey);
+        return null;
+      }
+    });
+  }
+
   /*
    * Not supported in REDIS2.8
    * Supported in Redis3.2
