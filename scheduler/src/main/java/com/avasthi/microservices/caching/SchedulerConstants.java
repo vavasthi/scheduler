@@ -133,10 +133,6 @@ public class SchedulerConstants {
   public static final String SCHEDULER_ENDPOINT_NAME = "scheduler";
   public static final String SCHEDULER_ENDPOINT = "/" + SCHEDULER_ENDPOINT_NAME;
 
-  public static final int MIN_THREADS = 10;
-  public static final int MAX_THREADS = 1000;
-  public static final int MAX_QUEUE_SIZE = MAX_THREADS * 20;
-  public static final int THREAD_KEEPALIVE_TIME = 10;
   public static final TimeUnit THREAD_KEEPALIVE_TIMEUNIT = TimeUnit.MINUTES;
 
 }

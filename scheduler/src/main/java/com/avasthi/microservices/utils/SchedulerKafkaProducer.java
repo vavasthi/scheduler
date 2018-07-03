@@ -10,7 +10,6 @@ import java.util.Properties;
 
 public class SchedulerKafkaProducer {
 
-    private Map<String, Producer<String, String>> producerMap = new HashMap<>();
     public static SchedulerKafkaProducer INSTANCE = new SchedulerKafkaProducer();
 
     private SchedulerKafkaProducer() {
@@ -27,24 +26,16 @@ public class SchedulerKafkaProducer {
      */
     public Producer<String, String> getProducer(String hosts, int retryCount) {
 
-        Producer<String, String> producer = producerMap.get(hosts);
-        if (producer != null) {
-            return producer;
-        }
-        else {
-
-            Properties properties = new Properties();
-            properties.put("bootstrap.servers", hosts);
-            properties.put("acks", "all");
-            properties.put("retries", retryCount);
-            properties.put("buffer.memory", 33554432);
-            properties.put("key.serializer",
-                    "org.apache.kafka.common.serialization.StringSerializer");
-            properties.put("value.serializer",
-                    "org.apache.kafka.common.serialization.StringSerializer");
-            producer = new KafkaProducer<String, String>(properties);
-            producerMap.put(hosts, producer);
-            return producer;
-        }
+        Properties properties = new Properties();
+        properties.put("bootstrap.servers", hosts);
+        properties.put("acks", "all");
+        properties.put("retries", retryCount);
+        properties.put("buffer.memory", 33554432);
+        properties.put("auto.create.topics.enable", true);
+        properties.put("key.serializer",
+                "org.apache.kafka.common.serialization.StringSerializer");
+        properties.put("value.serializer",
+                "org.apache.kafka.common.serialization.StringSerializer");
+        return  new KafkaProducer<String, String>(properties);
     }
 }

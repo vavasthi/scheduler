@@ -31,6 +31,7 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -44,25 +45,41 @@ import java.util.concurrent.ThreadPoolExecutor;
 @Service
 public class SchedulerService {
 
+
+  @Value("${scheduler.min_threads:10}")
+  private int minThreads;
+  @Value("${scheduler.max_threads:1000}")
+  private int maxThreads;
+  @Value("${scheduler.thread_pool.queue_size:10000}")
+  private int threadPoolQueueSize;
+  @Value("${scheduler.thread_pool.keepalive:10}")
+  private int keepAliveTime;
+
   @Autowired
   private SchedulerCacheService schedulerCacheService;
 
-  private static final ExecutorService executorService;
+  private  ExecutorService executorService;
 
   private static Logger logger = LoggerFactory.getLogger(SchedulerService.class.getName());
 
-  static {
-    ThreadFactory factory = new SchedulerThreadFactory()
-            .setDaemon(false)
-            .setNamePrefix("scheduler-service-pool")
-            .setPriority(Thread.MAX_PRIORITY)
-            .build();
-    executorService = new ThreadPoolExecutor(SchedulerConstants.MIN_THREADS,
-            SchedulerConstants.MAX_THREADS,
-            SchedulerConstants.THREAD_KEEPALIVE_TIME,
-            SchedulerConstants.THREAD_KEEPALIVE_TIMEUNIT,
-            new LinkedBlockingQueue<>(SchedulerConstants.MAX_QUEUE_SIZE));
+  private ExecutorService getExecutorService() {
+
+    if (executorService == null) {
+
+      ThreadFactory factory = new SchedulerThreadFactory()
+              .setDaemon(false)
+              .setNamePrefix("scheduler-service-pool")
+              .setPriority(Thread.MAX_PRIORITY)
+              .build();
+      executorService = new ThreadPoolExecutor(minThreads,
+              maxThreads,
+              keepAliveTime,
+              SchedulerConstants.THREAD_KEEPALIVE_TIMEUNIT,
+              new LinkedBlockingQueue<>(threadPoolQueueSize));
+    }
+    return executorService;
   }
+
   @Scheduled(cron = "0 * * * * ?")
   public void processPerMinute() {
     Date timestamp = new Date();
@@ -74,7 +91,7 @@ public class SchedulerService {
        */
       logger.info("Scheduling item " + scheduledItem.getId().toString());
       final ScheduledItem si = scheduledItem;
-      executorService.submit(new Runnable() {
+      getExecutorService().submit(new Runnable() {
         @Override
         public void run() {
 
@@ -168,7 +185,14 @@ public class SchedulerService {
 
     Producer<String, String> producer
             = SchedulerKafkaProducer.INSTANCE.getProducer(StringUtils.join(messageTarget.getServers(), ','), retryCount);
-    producer.send(new ProducerRecord<>(messageTarget.getTopic(), 1, body, body));
+    try {
+
+      producer.send(new ProducerRecord<>(messageTarget.getTopic(), 1, body, body));
+    }
+    finally {
+      producer.flush();
+      producer.close();
+    }
     return true;
   }
 }
