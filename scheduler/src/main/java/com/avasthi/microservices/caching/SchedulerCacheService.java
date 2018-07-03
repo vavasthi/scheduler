@@ -44,11 +44,11 @@ public class SchedulerCacheService extends AbstractGeneralCacheService {
     }
     Date timestamp = scheduledItem.getTimestamp();
     Date now = new Date();
-    if ((timestamp.getTime() - now.getTime() + 60000) <= 0) {
+    if ((timestamp.getTime() - now.getTime() - 60000) <= 0) {
       timestamp.setTime(now.getTime() + 60000);
     }
-    logger.info("Scheduling the task for " + timestamp);
     String key = getBucketKey(timestamp);
+    logger.info("Scheduling the task for " + key);
     store(scheduledItem, key);
     return scheduledItem;
   }
@@ -84,9 +84,10 @@ public class SchedulerCacheService extends AbstractGeneralCacheService {
   public void retry(ScheduledItem scheduledItem) {
     RetrySpecification retrySpecification = scheduledItem.getRetry();
     if (retrySpecification != null && scheduledItem.getCount() < retrySpecification.getCount()) {
-      remove(scheduledItem.getId());
-      int timeout = retrySpecification.getTimeout() * new Double(Math.pow(2, scheduledItem.getCount())).intValue();
       long t = scheduledItem.getTimestamp().getTime();
+      remove(scheduledItem.getId());
+      scheduledItem.setCount(scheduledItem.getCount() + 1);
+      int timeout = retrySpecification.getTimeout() * Double.valueOf(Math.pow(2, scheduledItem.getCount())).intValue();
       t += (timeout * 1000);
       scheduledItem.setTimestamp(new Date(t));
       store(scheduledItem);

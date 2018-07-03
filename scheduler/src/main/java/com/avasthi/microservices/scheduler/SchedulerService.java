@@ -143,7 +143,9 @@ public class SchedulerService {
         scheduledItem.getRestTarget().markCompleted();
       }
     }
-    if (retryItem && (!scheduledItem.getMessageTarget().done() || !scheduledItem.getRestTarget().done())) {
+    if (retryItem
+            && (!scheduledItem.getMessageTarget().done() || !scheduledItem.getRestTarget().done())
+            && retry != null && scheduledItem.getCount() < retry.getCount()) {
 
       schedulerCacheService.retry(scheduledItem);
     }
