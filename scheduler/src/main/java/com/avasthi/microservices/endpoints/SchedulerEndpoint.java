@@ -21,12 +21,17 @@ import com.avasthi.microservices.caching.SchedulerCacheService;
 import com.avasthi.microservices.caching.SchedulerConstants;
 import com.avasthi.microservices.exceptions.NotFoundException;
 import com.avasthi.microservices.pojos.ScheduledItem;
+import com.avasthi.microservices.pojos.SchedulerBasicReturnValue;
+import com.avasthi.microservices.scheduler.SchedulerService;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Date;
 import java.util.UUID;
 
 
@@ -36,6 +41,8 @@ import java.util.UUID;
         description = "This endpoint provides interface for adding and removing a scheduled item.")
 public class SchedulerEndpoint {
 
+  @Autowired
+  private SchedulerService schedulerService;
   @Autowired
   private SchedulerCacheService schedulerCacheService;
 
@@ -65,5 +72,13 @@ public class SchedulerEndpoint {
       throw new NotFoundException(String.format("%s not found", id.toString()));
     }
     return scheduledItem;
+  }
+  @ApiOperation(value = "Replay set of messages starting from a timestamp.",
+          notes = "This interface allows replay of scheduledItems from a given time.")
+  @RequestMapping(value = "/replay/{timestamp}", method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
+  public @ResponseBody  SchedulerBasicReturnValue replay(@PathVariable(value = "timestamp") @DateTimeFormat(pattern="yyyy-MM-dd hh:mm") Date timestamp) {
+
+    schedulerService.processFrom(timestamp);
+    return new SchedulerBasicReturnValue(HttpStatus.OK.value(), "Success.");
   }
 }

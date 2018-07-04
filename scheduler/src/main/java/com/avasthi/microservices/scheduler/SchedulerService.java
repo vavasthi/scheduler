@@ -35,8 +35,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.util.Calendar;
 import java.util.Date;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadFactory;
@@ -83,22 +85,55 @@ public class SchedulerService {
   @Scheduled(cron = "0 * * * * ?")
   public void processPerMinute() {
     Date timestamp = new Date();
-    logger.info("Running scheduler @ " + timestamp.toString());
-    ScheduledItem scheduledItem = null;
-    while ((scheduledItem = schedulerCacheService.processNext(timestamp)) != null) {
-      /**
-       * Add the item into the being processed set. This is to take care of crash scenarios.
-       */
-      logger.info("Scheduling item " + scheduledItem.getId().toString());
-      final ScheduledItem si = scheduledItem;
-      getExecutorService().submit(new Runnable() {
-        @Override
-        public void run() {
-
-          processItem(si); // Process the item based on the configuration provided.
-        }
-      });
+    Calendar calendar = Calendar.getInstance();
+    calendar.setTime(timestamp);
+    /**
+     * It has been observed that the scheduled tasks sometime kick off little before the time, for example a task that
+     * expected to kickoff at 11:30:00 is seen to kickoff at 11:29:55. This will take care of those scenarios. If the
+     * number of seconds is great that 50 then we roll the time over to next minute.
+     */
+    if (calendar.get(Calendar.SECOND) > 50) {
+      calendar.set(Calendar.SECOND, 0);
+      calendar.add(Calendar.MINUTE, 1);
+      timestamp = calendar.getTime();
     }
+    logger.info("Running scheduler @ " + timestamp.toString());
+    processTimestamp(timestamp);
+  }
+
+  @Scheduled(cron = "0 */15 * * * ?")
+  public void processPerHour() {
+
+    Calendar calendar = Calendar.getInstance();
+    calendar.set(Calendar.SECOND, 0);
+    calendar.set(Calendar.MILLISECOND, 0);
+    calendar.add(Calendar.HOUR, -24);
+    processFrom(calendar.getTime());
+  }
+
+  private void processTimestamp(Date timestamp) {
+
+    getExecutorService().submit(new Runnable() {
+      @Override
+      public void run() {
+
+        ScheduledItem scheduledItem = null;
+        while ((scheduledItem = schedulerCacheService.processNext(timestamp)) != null) {
+          /**
+           * Add the item into the being processed set. This is to take care of crash scenarios.
+           */
+          logger.info("Scheduling item " + scheduledItem.getId().toString());
+          final ScheduledItem si = scheduledItem;
+          getExecutorService().submit(new Runnable() {
+            @Override
+            public void run() {
+
+              processItem(si); // Process the item based on the configuration provided.
+            }
+          });
+        }
+      }
+    });
   }
 
   private void processItem(ScheduledItem scheduledItem) {
@@ -205,5 +240,22 @@ public class SchedulerService {
       producer.close();
     }
     return true;
+  }
+
+  /**
+   * This method will process all the buckets from the given time till now.
+   * @param timestamp timestamp from which the buckets need to be processed.
+   */
+  public void processFrom(Date timestamp) {
+    Calendar calendar = Calendar.getInstance();
+    calendar.setTime(timestamp);
+    calendar.set(Calendar.SECOND, 0);
+    calendar.set(Calendar.MILLISECOND, 0);
+
+    Calendar nowCalendar = Calendar.getInstance();
+    while(calendar.before(nowCalendar)) {
+      processTimestamp(calendar.getTime());
+      calendar.add(Calendar.MINUTE, 1);
+    }
   }
 }
