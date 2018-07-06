@@ -39,10 +39,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.*;
 
 @Service
 public class SchedulerService {
@@ -60,11 +57,11 @@ public class SchedulerService {
   @Autowired
   private SchedulerCacheService schedulerCacheService;
 
-  private  ExecutorService executorService;
+  private ScheduledExecutorService executorService;
 
   private static Logger logger = LoggerFactory.getLogger(SchedulerService.class.getName());
 
-  private ExecutorService getExecutorService() {
+  private ScheduledExecutorService getExecutorService() {
 
     if (executorService == null) {
 
@@ -73,11 +70,12 @@ public class SchedulerService {
               .setNamePrefix("scheduler-service-pool")
               .setPriority(Thread.MAX_PRIORITY)
               .build();
-      executorService = new ThreadPoolExecutor(minThreads,
+      executorService = Executors.newScheduledThreadPool(minThreads, factory);
+/*      executorService = new ThreadPoolExecutor(minThreads,
               maxThreads,
               keepAliveTime,
               SchedulerConstants.THREAD_KEEPALIVE_TIMEUNIT,
-              new LinkedBlockingQueue<>(threadPoolQueueSize));
+              new LinkedBlockingQueue<>(threadPoolQueueSize));*/
     }
     return executorService;
   }
@@ -124,20 +122,25 @@ public class SchedulerService {
            */
           logger.info("Scheduling item " + scheduledItem.getId().toString());
           final ScheduledItem si = scheduledItem;
-          getExecutorService().submit(new Runnable() {
+          Date now = new Date();
+          long delay = scheduledItem.getTimestamp().getTime() - now.getTime();
+          if (delay < 0) {
+            delay = 0;
+          }
+          getExecutorService().schedule(new Runnable() {
             @Override
             public void run() {
 
               processItem(si); // Process the item based on the configuration provided.
             }
-          });
+          }, delay, TimeUnit.MILLISECONDS);
         }
       }
     });
   }
 
   private void processItem(ScheduledItem scheduledItem) {
-    logger.info("Processing " + scheduledItem.getId().toString() + " @ " + scheduledItem.getTimestamp().toString());
+    logger.info("Processing " + scheduledItem.getId().toString() + " @ " + scheduledItem.getTimestamp().toString() + " current Time " + (new Date()).toString());
 
     MessageTarget messageTarget = scheduledItem.getMessageTarget();
     RestTarget restTarget = scheduledItem.getRestTarget();
