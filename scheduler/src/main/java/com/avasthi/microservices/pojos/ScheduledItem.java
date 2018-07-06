@@ -74,6 +74,14 @@ public class ScheduledItem implements Serializable {
     this.requestId = requestId;
   }
 
+  public String getRepeatSpecification() {
+    return repeatSpecification;
+  }
+
+  public void setRepeatSpecification(String repeatSpecification) {
+    this.repeatSpecification = repeatSpecification;
+  }
+
   public String getKey() {
     return key;
   }
@@ -169,6 +177,7 @@ public class ScheduledItem implements Serializable {
   private UUID id;
   private UUID responseId;
   private UUID requestId;
+  private String repeatSpecification;
   private String key;
   private Date timestamp;
   private int count;

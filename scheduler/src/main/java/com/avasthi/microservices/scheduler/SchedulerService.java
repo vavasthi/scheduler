@@ -186,6 +186,7 @@ public class SchedulerService {
             && retry != null && scheduledItem.getCount() < retry.getCount()) {
 
       schedulerCacheService.retry(scheduledItem);
+      schedulerCacheService.update(scheduledItem);
     }
     else {
 
@@ -217,9 +218,18 @@ public class SchedulerService {
         ns.setRequestId(scheduledItem.getId());
         ns = schedulerCacheService.scheduleItem(ns);
         scheduledItem.setResponseId(ns.getId());
+
       }
+      /**
+       * This is the terminal state. If we have reached this state and there is a repeatSpecification on scheduledItem, then we need to reschedule it for next
+       * timestamp. We set the id to null so that a new id can be generated and we set timestamp to null so that cronstring is used to generate next
+       * occurence.
+       */
+      scheduledItem.setTimestamp(null);
+      scheduledItem.setId(null);
+      scheduledItem.setCount(0);
+      schedulerCacheService.store(scheduledItem);
     }
-    schedulerCacheService.update(scheduledItem);
   }
 
   private boolean processRestTarget(RestTarget restTarget, String body) {

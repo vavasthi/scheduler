@@ -3,6 +3,7 @@ package com.avasthi.microservices.caching;
 import com.avasthi.microservices.annotations.DefineCache;
 import com.avasthi.microservices.pojos.RetrySpecification;
 import com.avasthi.microservices.pojos.ScheduledItem;
+import com.avasthi.microservices.utils.SchedulerCronUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -39,6 +40,10 @@ public class SchedulerCacheService extends AbstractGeneralCacheService {
     return format.format(calendar.getTime());
   }
   public ScheduledItem store(ScheduledItem scheduledItem) {
+    if (scheduledItem.getTimestamp() == null) {
+      scheduledItem.setTimestamp(SchedulerCronUtils.INSTANCE.getNextTimestamp(scheduledItem.getRepeatSpecification()));
+      logger.info("Reschedule specification is present and timeout is null. Rescheduling at " + (new Date()).toString() + " for " + scheduledItem.getTimestamp().toString());
+    }
     if (scheduledItem.getId() == null) {
       scheduledItem.setId(UUID.randomUUID());
     }
