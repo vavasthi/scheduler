@@ -199,10 +199,21 @@ public class SchedulerService {
                 scheduledItem.getRetry(),
                 scheduledItem.getMessageCallback(),
                 scheduledItem.getRestCallback());
-        ns.setBody(scheduledItem.getResponseBody().replaceAll("\\$id", scheduledItem.getId().toString()));
-        ns.setRestTarget(scheduledItem.getRestCallback());
-        ns.setMessageTarget(scheduledItem.getMessageCallback());
-        ns.getRestTarget().setUrl(ns.getRestTarget().getUrl().replaceAll("\\$id", scheduledItem.getId().toString()));
+        if (scheduledItem.getMessageTarget() != null && scheduledItem.getMessageCallback() != null) {
+
+          ns.setMessageTarget(scheduledItem.getMessageCallback());
+          ns.setBody(scheduledItem.getResponseBody().replaceAll("\\$messageStatus", scheduledItem.getMessageTarget().getStatus().name()));
+          ns.setBody(scheduledItem.getResponseBody().replaceAll("\\$messageStatus", scheduledItem.getMessageTarget().getStatus().name()));
+          ns.setBody(scheduledItem.getResponseBody().replaceAll("\\$messageCompletedAt", scheduledItem.getMessageTarget().getCompletedAt().toString()));
+        }
+        if (scheduledItem.getRestTarget() != null && scheduledItem.getRestCallback() != null) {
+
+          ns.setRestTarget(scheduledItem.getRestCallback());
+          ns.setBody(scheduledItem.getResponseBody().replaceAll("\\$id", scheduledItem.getId().toString()));
+          ns.getRestTarget().setUrl(ns.getRestTarget().getUrl().replaceAll("\\$id", scheduledItem.getId().toString()));
+          ns.setBody(scheduledItem.getResponseBody().replaceAll("\\$restStatus", scheduledItem.getRestTarget().getStatus().name()));
+          ns.setBody(scheduledItem.getResponseBody().replaceAll("\\$restCompletedAt", scheduledItem.getRestTarget().getCompletedAt().toString()));
+        }
         ns.setRequestId(scheduledItem.getId());
         ns = schedulerCacheService.scheduleItem(ns);
         scheduledItem.setResponseId(ns.getId());
