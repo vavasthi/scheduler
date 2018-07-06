@@ -58,6 +58,22 @@ public class ScheduledItem implements Serializable {
     this.id = id;
   }
 
+  public UUID getResponseId() {
+    return responseId;
+  }
+
+  public void setResponseId(UUID responseId) {
+    this.responseId = responseId;
+  }
+
+  public UUID getRequestId() {
+    return requestId;
+  }
+
+  public void setRequestId(UUID requestId) {
+    this.requestId = requestId;
+  }
+
   public String getKey() {
     return key;
   }
@@ -121,20 +137,49 @@ public class ScheduledItem implements Serializable {
     this.body = body;
   }
 
+  public String getResponseBody() {
+    return responseBody;
+  }
+
+  public void setResponseBody(String responseBody) {
+    this.responseBody = responseBody;
+  }
+
   public void tryingExecution() {
     ++count;
     triedAt = new Date();
   }
 
+  public MessageTarget getMessageCallback() {
+    return messageCallback;
+  }
+
+  public void setMessageCallback(MessageTarget messageCallback) {
+    this.messageCallback = messageCallback;
+  }
+
+  public RestTarget getRestCallback() {
+    return restCallback;
+  }
+
+  public void setRestCallback(RestTarget restCallback) {
+    this.restCallback = restCallback;
+  }
+
   private UUID id;
+  private UUID responseId;
+  private UUID requestId;
   private String key;
   private Date timestamp;
   private int count;
   private MessageTarget messageTarget;
   private RestTarget restTarget;
+  private MessageTarget messageCallback;
+  private RestTarget restCallback;
   private RetrySpecification retry;
   private Date triedAt;
   private String body;
+  private String responseBody;
 
 
 }

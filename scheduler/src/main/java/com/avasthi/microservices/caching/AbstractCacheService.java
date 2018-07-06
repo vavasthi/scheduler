@@ -385,7 +385,6 @@ public class AbstractCacheService {
       public List<Object> execute(RedisOperations redisOperations) throws DataAccessException {
         redisOperations.opsForSet().remove(cacheKeyPrefix, valueKey);
         redisOperations.opsForValue().get(new CacheKeyPrefix(getPrefix(), valueKey));
-        redisOperations.delete(new CacheKeyPrefix(getPrefix(), valueKey));
         redisOperations.opsForSet().remove(SchedulerConstants.SCHEDULER_ITEM_BEING_PROCESSED_KEY, valueKey);
         return null;
       }

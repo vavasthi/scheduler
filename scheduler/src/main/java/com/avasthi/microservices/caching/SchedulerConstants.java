@@ -119,6 +119,7 @@ public class SchedulerConstants {
   /**
    * The constant NEVER_EXPIRE.
    */
+  public static final long ONE_DAY = 24 * 60 * 60;
   public static final long NEVER_EXPIRE = -1;
   public static final String SCHEDULER_CACHE_NAME = "SCHEDULER_CACHE";
   public static final String SCHEDULER_CACHE_PEFIX = "SCHEDULER:";

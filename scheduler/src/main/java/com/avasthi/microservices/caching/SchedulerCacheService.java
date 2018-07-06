@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
 
 @DefineCache(name = SchedulerConstants.SCHEDULER_CACHE_NAME,
         prefix = SchedulerConstants.SCHEDULER_CACHE_PEFIX,
-        expiry = SchedulerConstants.NEVER_EXPIRE)
+        expiry = SchedulerConstants.ONE_DAY)
 @Service
 public class SchedulerCacheService extends AbstractGeneralCacheService {
 
@@ -127,5 +127,10 @@ public class SchedulerCacheService extends AbstractGeneralCacheService {
     for (ScheduledItem si : scheduledItems) {
       rescheduleFromBeingProcessed(key, si.getId());
     }
+  }
+  public void update(ScheduledItem scheduledItem) {
+    Map<Object, Object> keyValuePair = new HashMap<>();
+    keyValuePair.put(scheduledItem.getId(), scheduledItem);
+    storeObject(keyValuePair);
   }
 }

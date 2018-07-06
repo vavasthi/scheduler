@@ -191,7 +191,21 @@ public class SchedulerService {
        * the item is deleted. This is required for that deletion.
        */
       schedulerCacheService.remove(scheduledItem.getId());
+      if (scheduledItem.getRestCallback() != null || scheduledItem.getMessageCallback() != null) {
+        ScheduledItem ns = new ScheduledItem(new Date(),
+                scheduledItem.getRetry(),
+                scheduledItem.getMessageCallback(),
+                scheduledItem.getRestCallback());
+        ns.setBody(scheduledItem.getResponseBody().replaceAll("\\$id", scheduledItem.getId().toString()));
+        ns.setRestTarget(scheduledItem.getRestCallback());
+        ns.setMessageTarget(scheduledItem.getMessageCallback());
+        ns.getRestTarget().setUrl(ns.getRestTarget().getUrl().replaceAll("\\$id", scheduledItem.getId().toString()));
+        ns.setRequestId(scheduledItem.getId());
+        ns = schedulerCacheService.scheduleItem(ns);
+        scheduledItem.setResponseId(ns.getId());
+      }
     }
+    schedulerCacheService.update(scheduledItem);
   }
 
   private boolean processRestTarget(RestTarget restTarget, String body) {
