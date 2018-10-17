@@ -186,6 +186,7 @@ public class SchedulerService {
             && retry != null && scheduledItem.getCount() < retry.getCount()) {
 
       schedulerCacheService.retry(scheduledItem);
+      schedulerCacheService.update(scheduledItem);
     }
     else {
 
@@ -199,27 +200,38 @@ public class SchedulerService {
                 scheduledItem.getRetry(),
                 scheduledItem.getMessageCallback(),
                 scheduledItem.getRestCallback());
+        String body = scheduledItem.getResponseBody();
         if (scheduledItem.getMessageTarget() != null && scheduledItem.getMessageCallback() != null) {
 
           ns.setMessageTarget(scheduledItem.getMessageCallback());
-          ns.setBody(scheduledItem.getResponseBody().replaceAll("\\$messageStatus", scheduledItem.getMessageTarget().getStatus().name()));
-          ns.setBody(scheduledItem.getResponseBody().replaceAll("\\$messageStatus", scheduledItem.getMessageTarget().getStatus().name()));
-          ns.setBody(scheduledItem.getResponseBody().replaceAll("\\$messageCompletedAt", scheduledItem.getMessageTarget().getCompletedAt().toString()));
+          body = body.replaceAll("\\$messageStatus", scheduledItem.getMessageTarget().getStatus().name())
+                  .replaceAll("\\$messageStatus", scheduledItem.getMessageTarget().getStatus().name())
+                  .replaceAll("\\$messageCompletedAt", scheduledItem.getMessageTarget().getCompletedAt().toString());
         }
         if (scheduledItem.getRestTarget() != null && scheduledItem.getRestCallback() != null) {
 
           ns.setRestTarget(scheduledItem.getRestCallback());
-          ns.setBody(scheduledItem.getResponseBody().replaceAll("\\$id", scheduledItem.getId().toString()));
-          ns.getRestTarget().setUrl(ns.getRestTarget().getUrl().replaceAll("\\$id", scheduledItem.getId().toString()));
-          ns.setBody(scheduledItem.getResponseBody().replaceAll("\\$restStatus", scheduledItem.getRestTarget().getStatus().name()));
-          ns.setBody(scheduledItem.getResponseBody().replaceAll("\\$restCompletedAt", scheduledItem.getRestTarget().getCompletedAt().toString()));
+          body = body.replaceAll("\\$id", scheduledItem.getId().toString())
+                  .replaceAll("\\$id", scheduledItem.getId().toString())
+                  .replaceAll("\\$restStatus", scheduledItem.getRestTarget().getStatus().name())
+                  .replaceAll("\\$restCompletedAt", scheduledItem.getRestTarget().getCompletedAt().toString());
         }
+        ns.setBody(body);
         ns.setRequestId(scheduledItem.getId());
         ns = schedulerCacheService.scheduleItem(ns);
         scheduledItem.setResponseId(ns.getId());
+
       }
+      /**
+       * This is the terminal state. If we have reached this state and there is a repeatSpecification on scheduledItem, then we need to reschedule it for next
+       * timestamp. We set the id to null so that a new id can be generated and we set timestamp to null so that cronstring is used to generate next
+       * occurence.
+       */
+      scheduledItem.setTimestamp(null);
+      scheduledItem.setId(null);
+      scheduledItem.setCount(0);
+      schedulerCacheService.store(scheduledItem);
     }
-    schedulerCacheService.update(scheduledItem);
   }
 
   /**

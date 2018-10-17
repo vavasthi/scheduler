@@ -24,19 +24,19 @@ public class SchedulerRedisConfiguration {
   private
   @Value("${redis.scheduler.password:null}")
   String redisPassword;
-  @Value("${redis.scheduler.pool.maxIdle:20}")
+  @Value("${redis.scheduler.pool.maxIdle:5}")
   private int maxIdle;
   private
-  @Value("${redis.scheduler.pool.minIdle:5}")
+  @Value("${redis.scheduler.pool.minIdle:1}")
   int minIdle;
   private
   @Value("${redis.scheduler.pool.maxRedirects:3}")
   int maxRedirects;
   private
-  @Value("${redis.scheduler.pool.maxTotal:2000}")
+  @Value("${redis.scheduler.pool.maxTotal:20}")
   int maxTotal;
   private
-  @Value("${redis.scheduler.pool.maxWaitMillis:30000}")
+  @Value("${redis.scheduler.pool.maxWaitMillis:3000}")
   int maxWaitMillis;
 
   JedisConnectionFactory jedisSchedulerConnectionFactory() {
