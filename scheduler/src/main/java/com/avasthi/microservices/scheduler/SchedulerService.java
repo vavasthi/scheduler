@@ -222,7 +222,13 @@ public class SchedulerService {
     schedulerCacheService.update(scheduledItem);
   }
 
-  private boolean processRestTarget(RestTarget restTarget, String body) {
+  /**
+   * This method would process a rest target request
+   * @param restTarget details of the rest target
+   * @param body the body of the request passed
+   * @return true if success, false if failure
+   */
+    private boolean processRestTarget(RestTarget restTarget, String body) {
 
     try {
       OkHttpClient client = new OkHttpClient();
