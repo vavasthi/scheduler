@@ -108,6 +108,7 @@ public class SchedulerConstants {
    */
   public static final long TEN_SEC = 10;
   public static final int STALE_UUID_BLOCK_SIZE = 50;
+  public final static String PENDING_REQUEST_KEY = "PENDING_REQUEST_KEY";
   /**
    * The constant USER_UPLOAD_TOKEN_MIN_EXPIRE_TIME_SECONDS.
    */

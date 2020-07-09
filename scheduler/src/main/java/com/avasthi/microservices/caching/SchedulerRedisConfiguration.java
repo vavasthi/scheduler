@@ -1,71 +1,99 @@
 package com.avasthi.microservices.caching;
 
+import io.lettuce.core.ReadFrom;
+import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisClusterConfiguration;
 import org.springframework.data.redis.connection.RedisPassword;
-import org.springframework.data.redis.connection.jedis.JedisConnectionFactory;
+import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
+import org.springframework.data.redis.connection.lettuce.LettuceClientConfiguration;
+import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.JdkSerializationRedisSerializer;
-import org.springframework.data.redis.serializer.StringRedisSerializer;
-import redis.clients.jedis.JedisPoolConfig;
 
 import java.util.Arrays;
 
 
+@Log4j2
 @Configuration
 public class SchedulerRedisConfiguration {
-
   private
-  @Value("${redis.scheduler.nodes:localhost}")
-  String redisHost;
+  @Value("${redis.scheduler.hosts:localhost}")
+  String[] redisHosts;
+  private
+  @Value("${redis.scheduler.port:6379}")
+  int redisPort;
   @Value("${redis.scheduler.database:1}")
   private int redisDatabase;
-  private
-  @Value("${redis.scheduler.password:null}")
-  String redisPassword;
+  @Value("${redis.scheduler.password:}")
+  private String redisPassword;
   @Value("${redis.scheduler.pool.maxIdle:5}")
   private int maxIdle;
-  private
   @Value("${redis.scheduler.pool.minIdle:1}")
-  int minIdle;
-  private
+  private int minIdle;
   @Value("${redis.scheduler.pool.maxRedirects:3}")
-  int maxRedirects;
-  private
+  private int maxRedirects;
   @Value("${redis.scheduler.pool.maxTotal:20}")
-  int maxTotal;
+  private int maxTotal;
   private
   @Value("${redis.scheduler.pool.maxWaitMillis:3000}")
   int maxWaitMillis;
 
-  JedisConnectionFactory jedisSchedulerConnectionFactory() {
+  @Bean("schedulerRedisConnectionFactory")
+  public LettuceConnectionFactory connectionFactory() {
 
-    String[] hosts = redisHost.split(",");
-    JedisPoolConfig poolConfig = new JedisPoolConfig();
-    poolConfig.setMaxIdle(maxIdle);
-    poolConfig.setMinIdle(minIdle);
-    poolConfig.setMaxWaitMillis(maxWaitMillis);
-    poolConfig.setMaxTotal(maxTotal);
+    LettuceConnectionFactory connectionFactory = null;
+    if (redisHosts.length > 1) {
+      RedisClusterConfiguration clusterConfiguration
+              = new RedisClusterConfiguration(Arrays.asList(redisHosts));
+      if (redisPassword != null && !redisPassword.isEmpty()) {
 
-    if (hosts.length == 1) {
-      return new JedisConnectionFactory(poolConfig);
+        clusterConfiguration.setPassword(RedisPassword.of(redisPassword));
+      }
+      LettuceClientConfiguration clientConfiguration = LettuceClientConfiguration.builder()
+              .readFrom(ReadFrom.REPLICA_PREFERRED)
+              .build();
+      connectionFactory = new LettuceConnectionFactory(clusterConfiguration, clientConfiguration);
     }
     else {
 
-      RedisClusterConfiguration configuration = new RedisClusterConfiguration(Arrays.asList(hosts));
-      if (redisPassword != null || !redisPassword.isEmpty()) {
-        configuration.setPassword(RedisPassword.of(redisPassword));
+      String[] pair = redisHosts[0].split(":");
+      String host = pair[0];
+      int port = 6379;
+      try {
+
+        if (pair.length > 1) {
+
+          port = Integer.parseInt(pair[1]);
+        }
+        else {
+          port = redisPort;
+        }
       }
-      configuration.setMaxRedirects(maxRedirects);
-      JedisConnectionFactory factory = new JedisConnectionFactory(configuration, poolConfig);
-      return factory;
+      catch(Exception e) {
+        log.error("Port number is numeric", e);
+      }
+      RedisStandaloneConfiguration redisStandaloneConfiguration
+              = new RedisStandaloneConfiguration(host, port);
+      redisStandaloneConfiguration.setDatabase(redisDatabase);
+      if (redisPassword != null && !redisPassword.isEmpty()) {
+
+        redisStandaloneConfiguration.setPassword(RedisPassword.of(redisPassword));
+      }
+      LettuceClientConfiguration clientConfiguration = LettuceClientConfiguration.builder()
+              .readFrom(ReadFrom.REPLICA_PREFERRED)
+              .build();
+      connectionFactory = new LettuceConnectionFactory(redisStandaloneConfiguration, clientConfiguration);
     }
+    connectionFactory.setDatabase(redisDatabase);
+    return connectionFactory;
   }
 
   public RedisTemplate<Object, Object> redisTemplate() {
     RedisTemplate<Object, Object> redisTemplate = new RedisTemplate<Object, Object>();
-    redisTemplate.setConnectionFactory(jedisSchedulerConnectionFactory());
+    redisTemplate.setConnectionFactory(connectionFactory());
     redisTemplate.setKeySerializer(new JdkSerializationRedisSerializer());
     redisTemplate.setValueSerializer(new JdkSerializationRedisSerializer());
     redisTemplate.setEnableTransactionSupport(true);

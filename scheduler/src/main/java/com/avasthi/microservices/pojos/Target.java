@@ -16,9 +16,14 @@
 
 package com.avasthi.microservices.pojos;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.NoArgsConstructor;
+
 import java.io.Serializable;
 import java.util.Date;
 
+@AllArgsConstructor
 public class Target implements Serializable  {
 
 

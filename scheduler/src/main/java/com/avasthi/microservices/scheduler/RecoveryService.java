@@ -18,12 +18,11 @@ package com.avasthi.microservices.scheduler;
 
 import com.avasthi.microservices.caching.SchedulerCacheService;
 import com.avasthi.microservices.caching.SchedulerConstants;
-import com.avasthi.microservices.pojos.MessageTarget;
-import com.avasthi.microservices.pojos.RestTarget;
-import com.avasthi.microservices.pojos.RetrySpecification;
-import com.avasthi.microservices.pojos.ScheduledItem;
+import com.avasthi.microservices.pojos.*;
+import com.avasthi.microservices.utils.SchedulerCronUtils;
 import com.avasthi.microservices.utils.SchedulerKafkaProducer;
 import com.avasthi.microservices.utils.SchedulerThreadFactory;
+import lombok.extern.log4j.Log4j2;
 import okhttp3.*;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.producer.Producer;
@@ -35,59 +34,77 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-import java.util.Date;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.ThreadPoolExecutor;
+import java.util.*;
+import java.util.concurrent.*;
 
 @Service
-public class RecoveryService {
-
-
-  @Value("${scheduler.min_threads:10}")
-  private int minThreads;
-  @Value("${scheduler.max_threads:1000}")
-  private int maxThreads;
-  @Value("${scheduler.thread_pool.queue_size:10000}")
-  private int threadPoolQueueSize;
-  @Value("${scheduler.thread_pool.keepalive:10}")
-  private int keepAliveTime;
+@Log4j2
+public class RecoveryService extends AbstractService{
 
   @Autowired
   private SchedulerCacheService schedulerCacheService;
 
-  private  ExecutorService executorService;
-
   private static Logger logger = LoggerFactory.getLogger(RecoveryService.class.getName());
-
-  private ExecutorService getExecutorService() {
-
-    if (executorService == null) {
-
-      ThreadFactory factory = new SchedulerThreadFactory()
-              .setDaemon(false)
-              .setNamePrefix("scheduler-service-pool")
-              .setPriority(Thread.MAX_PRIORITY)
-              .build();
-      executorService = new ThreadPoolExecutor(minThreads,
-              maxThreads,
-              keepAliveTime,
-              SchedulerConstants.THREAD_KEEPALIVE_TIMEUNIT,
-              new LinkedBlockingQueue<>(threadPoolQueueSize));
-    }
-    return executorService;
-  }
 
   @Scheduled(cron = "0 */5 * * * ?")
   public void processPerFiveMinute() {
-    Set<ScheduledItem> staleScheduledItems = schedulerCacheService.getStaleScheduledItems();
-    logger.info(String.format("Found %d stale Items. Rescheduling them.", staleScheduledItems.size()));
-    if (staleScheduledItems.size() > 0) {
+    Optional<Checkpoint> lastCheckpointKey = schedulerCacheService.getLastCheckpoint();
+    int pendingCount = 0;
+    if (lastCheckpointKey.isPresent()) {
+      Checkpoint cp = lastCheckpointKey.get();
+      Date ts = cp.getTimestamp();
+      Calendar calendar = Calendar.getInstance();
+      calendar.setTime(ts);;
+      String key = SchedulerCronUtils.INSTANCE.getBucketKey(ts);
+      Date now = new Date();
+      String currentKey = SchedulerCronUtils.INSTANCE.getBucketKey(new Date());
+      while(ts.before(now)) {
 
-      schedulerCacheService.reschedulePendingItems(staleScheduledItems);
+        ++pendingCount;
+        Optional<ScheduledItem> optionalScheduledItem = schedulerCacheService.processNext(key);
+        while(optionalScheduledItem.isPresent()) {
+
+          ScheduledItem scheduledItem = optionalScheduledItem.get();
+          schedulerCacheService.addToPendingQueue(scheduledItem);
+          optionalScheduledItem = schedulerCacheService.processNext(key);
+        }
+        calendar.add(Calendar.MINUTE, 1);
+        ts = calendar.getTime();
+        key = SchedulerCronUtils.INSTANCE.getBucketKey(ts);
+      }
+      if (pendingCount > 0) {
+
+        log.info(String.format("%d Pending jobs found. Scheduling..", pendingCount));
+        getExecutorService().submit(new Runnable() {
+          @Override
+          public void run() {
+
+            Optional<ScheduledItem> optionalScheduledItem
+                    = schedulerCacheService.processNext(SchedulerConstants.PENDING_REQUEST_KEY);
+            while (optionalScheduledItem.isPresent()) {
+              ScheduledItem scheduledItem = optionalScheduledItem.get();
+              /**
+               * Add the item into the being processed set. This is to take care of crash scenarios.
+               */
+              logger.info("Scheduling item " + scheduledItem.getId().toString());
+              final ScheduledItem si = scheduledItem;
+              Date now = new Date();
+              long delay = scheduledItem.getTimestamp().getTime() - now.getTime();
+              if (delay < 0) {
+                delay = 0;
+              }
+              getExecutorService().schedule(new Runnable() {
+                @Override
+                public void run() {
+
+                  processItem(schedulerCacheService, si); // Process the item based on the configuration provided.
+                }
+              }, delay, TimeUnit.MILLISECONDS);
+              optionalScheduledItem = schedulerCacheService.processNext(SchedulerConstants.PENDING_REQUEST_KEY);
+            }
+          }
+        });
+      }
     }
   }
 }

@@ -16,15 +16,19 @@
 
 package com.avasthi.microservices.pojos;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.NoArgsConstructor;
+
 import java.io.Serializable;
 import java.util.Date;
 import java.util.UUID;
 
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
 public class ScheduledItem implements Serializable {
 
-  public ScheduledItem() {
-
-  }
   public ScheduledItem(Date timestamp,
                        RetrySpecification retry,
                        MessageTarget messageTarget,
@@ -189,6 +193,4 @@ public class ScheduledItem implements Serializable {
   private Date triedAt;
   private String body;
   private String responseBody;
-
-
 }

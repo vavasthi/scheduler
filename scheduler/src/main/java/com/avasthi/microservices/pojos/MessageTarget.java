@@ -16,22 +16,19 @@
 
 package com.avasthi.microservices.pojos;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.NoArgsConstructor;
+
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
 public class MessageTarget extends Target {
-
-  public MessageTarget() {
-
-  }
-  public MessageTarget(String topic, int partition, List<String> servers, Map<String, String> properties) {
-    this.topic = topic;
-    this.partition = partition;
-    this.servers = servers;
-    this.properties = properties;
-  }
 
   public String getTopic() {
     return topic;

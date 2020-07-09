@@ -1,13 +1,15 @@
 package com.avasthi.microservices.pojos;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.NoArgsConstructor;
+
 import java.io.Serializable;
 
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
 public class SchedulerBasicReturnValue implements Serializable {
-
-    public SchedulerBasicReturnValue(int status, String message) {
-        this.status = status;
-        this.message = message;
-    }
 
     public int getStatus() {
         return status;

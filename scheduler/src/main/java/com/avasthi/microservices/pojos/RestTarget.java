@@ -16,24 +16,22 @@
 
 package com.avasthi.microservices.pojos;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.NoArgsConstructor;
+
 import java.io.Serializable;
 import java.util.Map;
 
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
 public class RestTarget extends Target {
 
   public enum METHOD {
     GET,
     POST,
     DELETE
-  }
-  public RestTarget() {
-  }
-
-  public RestTarget(String url, METHOD method, String contentType, Map<String, String> headers) {
-    this.url = url;
-    this.method = method;
-    this.contentType = contentType;
-    this.headers = headers;
   }
 
   public String getUrl() {

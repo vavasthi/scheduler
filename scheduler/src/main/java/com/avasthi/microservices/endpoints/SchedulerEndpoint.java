@@ -20,25 +20,22 @@ package com.avasthi.microservices.endpoints;
 import com.avasthi.microservices.caching.SchedulerCacheService;
 import com.avasthi.microservices.caching.SchedulerConstants;
 import com.avasthi.microservices.exceptions.NotFoundException;
+import com.avasthi.microservices.pojos.MessageTarget;
 import com.avasthi.microservices.pojos.ScheduledItem;
 import com.avasthi.microservices.pojos.SchedulerBasicReturnValue;
 import com.avasthi.microservices.scheduler.SchedulerService;
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Mono;
 
-import java.util.Date;
-import java.util.UUID;
+import java.util.*;
 
 
 @RestController
 @RequestMapping(SchedulerConstants.VERSION_1 + SchedulerConstants.SCHEDULER_ENDPOINT)
-@Api(value = SchedulerConstants.SCHEDULER_ENDPOINT_NAME,
-        description = "This endpoint provides interface for adding and removing a scheduled item.")
 public class SchedulerEndpoint {
 
   @Autowired
@@ -47,34 +44,28 @@ public class SchedulerEndpoint {
   private SchedulerCacheService schedulerCacheService;
 
 
-  @ApiOperation(value = "Create a new scheduled item.",
-          notes = "This interface allows to add a new scheduled item with its target defined.")
   @RequestMapping(method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_VALUE)
-  public @ResponseBody ScheduledItem create(@RequestBody ScheduledItem scheduledItem) {
+  public @ResponseBody
+  Optional<ScheduledItem> create(@RequestBody ScheduledItem scheduledItem) {
 
+    scheduledItem.setId(UUID.randomUUID());
     return schedulerCacheService.scheduleItem(scheduledItem);
   }
 
-  @ApiOperation(value = "Get an already existing scheduledItem based on its UUID",
-          notes = "This interface allows retrieve all the details of a scheduled item.")
   @RequestMapping(value = "/{id}", method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
-  public @ResponseBody ScheduledItem create(@PathVariable(value = "id") UUID id) {
+  public @ResponseBody Optional<ScheduledItem> create(@PathVariable(value = "id") UUID id) {
 
     return schedulerCacheService.getItem(id);
   }
-  @ApiOperation(value = "Delete an existing scheduled item given its UUID",
-          notes = "This interface allows deletion of an existing scheduled item from its UUID.")
   @RequestMapping(value = "/{id}", method = RequestMethod.DELETE, produces = MediaType.APPLICATION_JSON_VALUE)
-  public @ResponseBody ScheduledItem delete(@PathVariable(value = "id") UUID id) {
+  public @ResponseBody Optional<ScheduledItem> delete(@PathVariable(value = "id") UUID id) {
 
-    ScheduledItem scheduledItem = schedulerCacheService.remove(id);
-    if (scheduledItem == null) {
-      throw new NotFoundException(String.format("%s not found", id.toString()));
+    Optional<ScheduledItem> optionalScheduledItem = schedulerCacheService.remove(id);
+    if (optionalScheduledItem.isPresent()) {
+      return optionalScheduledItem;
     }
-    return scheduledItem;
+   throw new NotFoundException(String.format("%s not found", id.toString()));
   }
-  @ApiOperation(value = "Replay set of messages starting from a timestamp.",
-          notes = "This interface allows replay of scheduledItems from a given time.")
   @RequestMapping(value = "/replay/{timestamp}", method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
   public @ResponseBody  SchedulerBasicReturnValue replay(@PathVariable(value = "timestamp") @DateTimeFormat(pattern="yyyy-MM-dd hh:mm") Date timestamp) {
 

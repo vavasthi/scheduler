@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Vinay Avasthi
+ * Copyright (c) 2020 Vinay Avasthi
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,33 +16,15 @@
 
 package com.avasthi.microservices.pojos;
 
-import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.NoArgsConstructor;
+import lombok.Data;
 
-import java.io.Serializable;
+import java.util.Date;
 
 @Builder
-@AllArgsConstructor
-@NoArgsConstructor
-public class RetrySpecification implements Serializable {
+@Data
+public class Checkpoint {
 
-  public int getCount() {
-    return count;
-  }
-
-  public void setCount(int count) {
-    this.count = count;
-  }
-
-  public int getTimeout() {
-    return timeout;
-  }
-
-  public void setTimeout(int timeout) {
-    this.timeout = timeout;
-  }
-
-  private int count;
-  private int timeout;
+  private String key;
+  private Date timestamp;
 }

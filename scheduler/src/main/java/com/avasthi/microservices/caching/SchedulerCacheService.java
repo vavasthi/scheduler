@@ -1,6 +1,7 @@
 package com.avasthi.microservices.caching;
 
 import com.avasthi.microservices.annotations.DefineCache;
+import com.avasthi.microservices.pojos.Checkpoint;
 import com.avasthi.microservices.pojos.RetrySpecification;
 import com.avasthi.microservices.pojos.ScheduledItem;
 import com.avasthi.microservices.utils.SchedulerCronUtils;
@@ -8,10 +9,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 @DefineCache(name = SchedulerConstants.SCHEDULER_CACHE_NAME,
         prefix = SchedulerConstants.SCHEDULER_CACHE_PEFIX,
@@ -19,30 +18,21 @@ import java.util.stream.Collectors;
 @Service
 public class SchedulerCacheService extends AbstractGeneralCacheService {
 
+  private final String LAST_PROCESSED_KEY = "LAST_PROCESSED_KEY";
   private static Logger logger = LoggerFactory.getLogger(SchedulerCacheService.class.getName());
-  public ScheduledItem scheduleItem(ScheduledItem item) {
+
+  public Optional<ScheduledItem> scheduleItem(ScheduledItem item) {
 
     return store(item);
   }
 
-  /**
-   * This function generates a key for redis from the timestamp
-   * @param timestamp the timestamp
-   * @return the key
-   */
-  private String getBucketKey(Date timestamp) {
-
-    Calendar calendar = Calendar.getInstance();
-    calendar.setTime(timestamp);
-    calendar.set(Calendar.SECOND, 0);
-    calendar.set(Calendar.MILLISECOND, 0);
-    SimpleDateFormat format = new SimpleDateFormat(SchedulerConstants.DATE_KEY_FORMAT);
-    return format.format(calendar.getTime());
-  }
-  public ScheduledItem store(ScheduledItem scheduledItem) {
+  public Optional<ScheduledItem> store(ScheduledItem scheduledItem) {
     if (scheduledItem.getTimestamp() == null) {
-      scheduledItem.setTimestamp(SchedulerCronUtils.INSTANCE.getNextTimestamp(scheduledItem.getRepeatSpecification()));
-      logger.info("Reschedule specification is present and timeout is null. Rescheduling at " + (new Date()).toString() + " for " + scheduledItem.getTimestamp().toString());
+      scheduledItem.setTimestamp(SchedulerCronUtils
+              .INSTANCE
+              .getNextTimestamp(scheduledItem.getRepeatSpecification()));
+      logger.info("Reschedule specification is present and timeout is null. Rescheduling at "
+              + (new Date()).toString() + " for " + scheduledItem.getTimestamp().toString());
     }
     if (scheduledItem.getId() == null) {
       scheduledItem.setId(UUID.randomUUID());
@@ -52,38 +42,32 @@ public class SchedulerCacheService extends AbstractGeneralCacheService {
     if ((timestamp.getTime() - now.getTime() - 60000) <= 0) {
       timestamp.setTime(now.getTime() + 60000);
     }
-    String key = getBucketKey(timestamp);
+    String key = SchedulerCronUtils.INSTANCE.getBucketKey(timestamp);
     logger.info("Scheduling the task for " + key);
     store(scheduledItem, key);
-    return scheduledItem;
+    return Optional.of(scheduledItem);
   }
-  public ScheduledItem store(ScheduledItem scheduledItem, String key) {
+  public Optional<ScheduledItem> store(ScheduledItem scheduledItem, String key) {
     scheduledItem.setKey(key);
     addObjectToSet(key, scheduledItem.getId(), scheduledItem);
-    return scheduledItem;
+    return Optional.of(scheduledItem);
   }
-  public ScheduledItem getItem(UUID id) {
+  public Optional<ScheduledItem> getItem(UUID id) {
 
-    ScheduledItem item = get(id, ScheduledItem.class);
-    return item;
+    return get(id, ScheduledItem.class);
   }
-  public ScheduledItem processNext(Date timestamp) {
+  public Optional<ScheduledItem> processNext(String key) {
 
-    String key = getBucketKey(timestamp);
-    ScheduledItem item = getObjectFromSet(key);
-    return item;
+    return getObjectFromSet(key, ScheduledItem.class);
   }
-  public ScheduledItem remove(UUID id) {
+  public Optional<ScheduledItem> remove(UUID id) {
     logger.info("Removing item with id = " + id.toString());
-    ScheduledItem scheduledItem = get(id, ScheduledItem.class);
-    if (scheduledItem != null) {
-
-      String key = scheduledItem.getKey();
-      return removeObjectFromSet(key, id);
+    Optional<ScheduledItem> optionalScheduledItem = get(id, ScheduledItem.class);
+    if (optionalScheduledItem.isPresent()) {
+      ScheduledItem si = optionalScheduledItem.get();
+      return removeObjectFromSet(si.getKey(), id, ScheduledItem.class);
     }
-    else {
-      return null;
-    }
+    return Optional.empty();
   }
 
   public void retry(ScheduledItem scheduledItem) {
@@ -112,10 +96,15 @@ public class SchedulerCacheService extends AbstractGeneralCacheService {
     staleUUIDs.stream().filter(new Predicate<UUID>() {
       @Override
       public boolean test(UUID uuid) {
-        ScheduledItem si = get(uuid, ScheduledItem.class);
-        if (si != null && (now.getTime() - si.getTimestamp().getTime()) > 60 * 1000) {
-          scheduledItems.add(si);
-          return true;
+        Optional<ScheduledItem> optionalScheduledItem = get(uuid, ScheduledItem.class);
+        if (optionalScheduledItem.isPresent()) {
+
+          ScheduledItem si = optionalScheduledItem.get();
+          if (si != null && (now.getTime() - si.getTimestamp().getTime()) > 60 * 1000) {
+            scheduledItems.add(si);
+            return true;
+          }
+          return false;
         }
         return false;
       }
@@ -128,7 +117,7 @@ public class SchedulerCacheService extends AbstractGeneralCacheService {
     calendar.setTime(now);
     calendar.add(Calendar.MINUTE, 2);
     Date nowPlus2 = calendar.getTime();
-    String key = getBucketKey(now);
+    String key = SchedulerCronUtils.INSTANCE.getBucketKey(now);
     for (ScheduledItem si : scheduledItems) {
       rescheduleFromBeingProcessed(key, si.getId());
     }
@@ -137,5 +126,20 @@ public class SchedulerCacheService extends AbstractGeneralCacheService {
     Map<Object, Object> keyValuePair = new HashMap<>();
     keyValuePair.put(scheduledItem.getId(), scheduledItem);
     storeObject(keyValuePair);
+  }
+
+  public void checkPoint(String key, Date keyTimestamp) {
+
+    Map<Object, Object> keyValuePair = new HashMap<>();
+    keyValuePair.put(LAST_PROCESSED_KEY, Checkpoint.builder().key(key).timestamp(keyTimestamp).build());
+    storeObject(keyValuePair);
+  }
+  public Optional<Checkpoint> getLastCheckpoint() {
+
+    return get(LAST_PROCESSED_KEY, Checkpoint.class);
+  }
+
+  public void addToPendingQueue(ScheduledItem scheduledItem) {
+    store(scheduledItem, SchedulerConstants.PENDING_REQUEST_KEY);
   }
 }
